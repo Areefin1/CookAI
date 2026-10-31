@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import "./App.css";
 
 const RecipeCard = ({ onSubmit }) => {
-  const [ingredientsInput, setIngredientsInput] = useState([]);
+  const [ingredientsInput, setIngredientsInput] = useState("");
   const [ingredients, setIngredients] = useState([]);
   const [mealType, setMealType] = useState("");
   const [cuisine, setCuisine] = useState("");
@@ -161,40 +161,58 @@ function App() {
   const [recipeText, setRecipeText] = useState("");
   const [loading, setLoading] = useState(false); // State for loading indicator
 
+  const [accessToken, setAccessToken] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
   async function onSubmit(data) {
+    setErrorMessage("");
     // Update state
     setRecipeText("");
     setLoading(true); // Set loading state to true
 
     // Send the data to the backend
     try {
-      const response = await fetch("http://localhost:3001/recipe", {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/recipe`, {
         method: "POST", // Use POST method
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(data), // Send data in JSON format
       });
 
+      const result = await response.json();
       // Check if response is ok
       if (!response.ok) {
-        throw new Error("Failed to fetch recipe.");
+        throw new Error(result.error || "Failed to fetch recipe.");
       }
 
-      const result = await response.json(); // Parse the JSON response
       setRecipeText(result.recipe); // Set the recipe text
     } catch (error) {
-      console.error("Error fetching recipe:", error);
+      setErrorMessage(error.message || "Unable to generate recipe.");
     } finally {
       setLoading(false); // Set loading state to false
     }
   }
   return (
     <div className="App bg-slate-900 min-h-screen flex items-center justify-center">
-      <div className="flex flex-row h-full my-4 gap-2 justify-center">
-        <RecipeCard onSubmit={onSubmit} />
-        <div className="w-[400px] h-[565px] text-xs text-gray-600 p-4 border rounded-lg shadow-xl whitespace-pre-line overflow-y-auto bg-white">
-          {recipeText}
+      <div className="grid grid-cols-[400px_400px] items-stretch my-4 gap-x-2 gap-y-4">
+        <div className="col-start-1">
+          <label className="block text-white text-sm font-bold mb-2" htmlFor="accessToken">App access token</label>
+          <input id="accessToken" type="password" autoComplete="off" className="p-2 border rounded"
+            value={accessToken} onChange={e => setAccessToken(e.target.value)} />
+        </div>
+        <div className="col-start-1 row-start-2">
+          <RecipeCard onSubmit={onSubmit} />
+        </div>
+        <div className="col-start-2 row-start-2 relative min-h-0 border rounded-lg shadow-xl bg-white overflow-hidden">
+          <div className="absolute inset-0 text-xs text-gray-600 p-4 whitespace-pre-line overflow-y-auto">
+            {recipeText}
+          </div>
+        </div>
+        <div className="col-start-1 row-start-3">
+          {loading && <p role="status" className="text-white">Generating recipe...</p>}
+          {errorMessage && <p role="alert" className="text-white">{errorMessage}</p>}
         </div>
       </div>
     </div>
